@@ -1,11 +1,11 @@
 FROM registry.access.redhat.com/ubi9
 
 ARG TARGETARCH
-#ARG CODE_RELEASE
+ENV HOME="/config"
 
 RUN set -o errexit -o nounset \
     && dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 \
-    && dnf install -y unzip sudo less --nodocs --setopt=install_weak_deps=0 \
+    && dnf install -y unzip sudo less git --nodocs --setopt=install_weak_deps=0 \
     && dnf clean all
 
 # pull the aws cli from aws
@@ -36,17 +36,22 @@ RUN chown root:root /etc/sudoers.d/devuser
 
 # install code-server
 RUN \
-  CODE_RELEASE=$(curl -sX GET https://api.github.com/repos/coder/code-server/releases/latest | awk '/tag_name/{print $4;exit}' FS='[""]' | sed 's|^v||') && \
-  printf ${CODE_RELEASE} && \
-  mkdir -p /app/code-server && \
-  if [ $TARGETARCH = "arm64" ]; then \
-    curl "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-linux-arm64.tar.gz" -o "/tmp/code-server.tar.gz" \
+  CODE_RELEASE=$(curl -sX GET https://api.github.com/repos/coder/code-server/releases/latest | awk '/tag_name/{print $4;exit}' FS='[""]' | sed 's|^v||') \
+  && printf ${CODE_RELEASE} \
+  && mkdir -p /app/code-server \
+  && if [ $TARGETARCH = "arm64" ]; then \
+    curl -L "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-linux-arm64.tar.gz" -o "/tmp/code-server.tar.gz" \
     ; else \
-    curl "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-linux-amd64.tar.gz" -o "/tmp/code-server.tar.gz" \
-    ; fi
+    curl -L "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-linux-amd64.tar.gz" -o "/tmp/code-server.tar.gz" \
+    ; fi \
+  && tar xzf /tmp/code-server.tar.gz -C /app/code-server --strip-components=1
 
 WORKDIR /home/devuser
 
 USER devuser
 
+# add local files
+COPY ./root /
+
+# ports
 EXPOSE 8443
