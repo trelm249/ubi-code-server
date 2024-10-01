@@ -1,11 +1,10 @@
-FROM registry.access.redhat.com/ubi9
+FROM registry.access.redhat.com/ubi9/ubi-init
 
 ARG TARGETARCH
-ENV HOME="/config"
 
 RUN set -o errexit -o nounset \
     && dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 \
-    && dnf install -y unzip sudo less git --nodocs --setopt=install_weak_deps=0 \
+    && dnf install -y unzip sudo less libatomic git --nodocs --setopt=install_weak_deps=0 \
     && dnf clean all
 
 # pull the aws cli from aws
@@ -38,20 +37,17 @@ RUN chown root:root /etc/sudoers.d/devuser
 RUN \
   CODE_RELEASE=$(curl -sX GET https://api.github.com/repos/coder/code-server/releases/latest | awk '/tag_name/{print $4;exit}' FS='[""]' | sed 's|^v||') \
   && printf ${CODE_RELEASE} \
-  && mkdir -p /app/code-server \
   && if [ $TARGETARCH = "arm64" ]; then \
-    curl -L "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-linux-arm64.tar.gz" -o "/tmp/code-server.tar.gz" \
-    ; else \
-    curl -L "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-linux-amd64.tar.gz" -o "/tmp/code-server.tar.gz" \
-    ; fi \
-  && tar xzf /tmp/code-server.tar.gz -C /app/code-server --strip-components=1
+    curl -fOL "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-arm64.rpm" \
+    && rpm -i code-server-${CODE_RELEASE}-arm64.rpm; else \
+    curl -fOL "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-amd64.rpm" \
+    && rpm -i code-server-${CODE_RELEASE}-amd64.rpm; fi 
 
-WORKDIR /home/devuser
+WORKDIR /home/devuser/
 
 USER devuser
 
-# add local files
-COPY ./root /
-
 # ports
 EXPOSE 8443
+
+ENTRYPOINT ["code-server", "--auth", "none", "--bind-addr", "0.0.0.0:8443"]
