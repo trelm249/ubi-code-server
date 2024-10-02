@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-init
+FROM registry.access.redhat.com/ubi9
 
 ARG TARGETARCH
 
@@ -41,7 +41,7 @@ RUN \
     curl -fOL "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-arm64.rpm" \
     && rpm -i code-server-${CODE_RELEASE}-arm64.rpm; else \
     curl -fOL "https://github.com/coder/code-server/releases/download/v${CODE_RELEASE}/code-server-${CODE_RELEASE}-amd64.rpm" \
-    && rpm -i code-server-${CODE_RELEASE}-amd64.rpm; fi 
+    && rpm -i code-server-${CODE_RELEASE}-amd64.rpm; fi
 
 WORKDIR /home/devuser/
 
